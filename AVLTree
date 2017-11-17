@@ -1,0 +1,303 @@
+#pragma once
+#include <assert.h>
+
+template<class K,class V>
+struct AVLNode
+{
+	AVLNode<K, V>* _left;
+	AVLNode<K, V>* _right;
+	AVLNode<K, V>* _parent;
+
+	K _key;
+	V _value;
+	int _bf; //平衡因子
+
+	AVLNode(const K& key, const V& value)
+		:_key(key)
+		,_value(value)
+		,_bf(0)
+		,_parent(NULL)
+		,_right(NULL)
+		,_left(NULL)
+	{}
+};
+
+template <class K,class V>
+class AVLTree
+{
+	typedef AVLNode<K, V> Node;
+private:
+	Node* _root;
+
+public:
+	AVLTree()
+		:_root(NULL)
+	{}
+		
+	bool Insert(const K& key, const V& value)
+	{
+		if (_root == NULL)
+		{
+			_root = new Node(key, value);
+			return true;
+		}
+		Node* parent = NULL;
+		Node* cur = _root;
+		while (cur)
+		{
+			if (key < cur->_key)
+			{
+				parent = cur;
+				cur = cur->_left;
+			}
+			else if (key > cur->_key)
+			{
+				parent = cur;
+				cur = cur->_right;
+			}
+			else
+				return false;
+		}
+		cur = new Node(key, value);
+		if (key < parent->_key)
+			parent->_left = cur;
+		else
+			parent->_right = cur;
+		cur->_parent = parent;
+
+		//更新平衡因子
+		while (parent)
+		{
+			if (cur == parent->_left)
+				parent->_bf -= 1;
+			else
+				parent->_bf += 1;
+
+			if (parent->_bf == 0)
+				return true;
+			else if (parent->_bf == -1
+				|| parent->_bf == 1)
+			{
+				cur = parent;
+				parent = cur->_parent;
+			}
+			else if (parent->_bf == -2
+				|| parent->_bf == 2)
+			{
+				if (parent->_bf == 2)
+				{
+					if (cur->_bf == 1)
+						RotateL(parent);
+					else
+						RotateRL(parent);
+				}
+				else
+				{
+					if (cur->_bf == -1)
+						RotateR(parent);
+					else
+						RotateLR(parent);
+				}
+			}
+			else
+			{
+				assert(false);
+			}
+		}
+		return true;
+	}
+
+	void InOrder()
+	{
+		_InOrder(_root);
+		cout << endl;
+	}
+
+	Node* Find(const K& key)
+	{
+		if (_root == NULL)
+			return NULL;
+		else if (key < _root->_key)
+			_root = _root->_left;
+		else if (key > _root->_key)
+			_root = _root->_right;
+		else
+			return _root;
+	}
+
+	bool IsBalance()
+	{
+		//return _IsBalance(_root);
+		int height = 0;
+		return _IsBalance(_root, height);
+	}
+
+protected:
+
+	bool _IsBalance(Node* node, int& height)
+	{
+		if (node == NULL)
+		{
+			height = 0;
+			return true;
+		}
+
+		int leftHeight = 0;
+		if (_IsBalance(node->_left, height) == false)
+			return false;
+
+		int rightHeight = 0;
+		if (_IsBalance(node->_right, height) == false)
+			return false;
+
+		if (node->_bf != (leftHeight - rightHeight))
+		{
+			cout << "平衡因子异常" << node->_key << endl;
+			return false;
+		}
+
+		height = leftHeight > rightHeight ? leftHeight + 1 : rightHeight + 1;
+		return abs(leftHeight - rightHeight) < 2;
+	}
+
+	/*bool _IsBalance(Node* node)
+	{
+		if (node == NULL)
+			return true;
+
+		int left = _Height(node->_left);
+		int right = _Height(node->_right);
+
+		return abs(left - right) < 2 && _IsBalance(node->_left) && _IsBalance(node->_right);
+	}
+
+	int _Height(Node* node)
+	{
+		if (node == NULL)
+			return 0;
+
+		int left = _Height(node->_left) + 1;
+		int right = _Height(node->_right) + 1;
+
+		return left > right ? left : right;
+	}*/
+
+	
+	void _InOrder(Node* node)
+	{
+		if (node == NULL)
+			return;
+
+		_InOrder(node->_left);
+		cout << node->_key << "__ "<<node->_value<<" ";
+		_InOrder(node->_right);
+	}
+
+	//parent->_right左旋转到parent的位置
+	void RotateL(Node* parent)
+	{
+		//若subrl不为空，则parent->left必不为空
+		
+		Node* SubR = parent->_right;
+		Node* SubRL = SubR->_left;
+
+		parent->_right = SubRL;
+		if (SubRL != NULL)
+			SubRL->_parent = parent;
+
+		Node* Pparent = parent->_parent;
+
+		SubR->_left = parent;
+		parent->_parent = SubR;
+		
+		if (Pparent == NULL)
+		{
+			_root = SubR;
+			SubR->_parent = NULL;
+		}
+		else if (Pparent->_left == parent)
+			Pparent->_left = SubR;
+		else
+			Pparent->_right = SubR;
+		
+		SubR->_parent = Pparent;
+		SubR->_bf = parent->_bf = 0;
+	}
+
+	//parent->_left右旋到parent的位置
+	void RotateR(Node* parent)
+	{
+		Node* SubL = parent->_left;
+		Node* SubLR = SubL->_right;
+
+		parent->_left = SubLR;
+		if (SubLR != NULL)
+			SubLR->_parent = parent;
+
+		Node* Pparent = parent->_parent;
+
+		SubL->_right = parent;
+		parent->_parent = SubL;
+
+		if (Pparent == NULL)
+			_root = SubL;
+		else if (Pparent->_left == parent)
+			Pparent->_left = SubL;
+		else
+			Pparent->_right = SubL;
+
+		SubL->_parent = parent;
+		parent->_bf = SubL->_bf = 0;
+	}
+
+	void RotateLR(Node* parent)
+	{
+		Node* SubL = parent->_left;
+		Node* SubLR = SubL->_right;
+		int bf = SubLR->_bf;
+
+		RotateL(SubLR);
+		RotateR(parent);
+
+		if (bf == 1)
+		{
+			parent->_bf = SubLR->_bf = 0;
+			SubL->_bf = -1;
+		}
+		else if (bf == -1)
+		{
+			parent->_bf = 1;
+			SubLR->_bf = SubL->_bf = 0;
+		}
+		else if (bf == 0)
+			parent->_bf = SubL->_bf = SubLR->_bf = 0;
+		else
+			assert(false);
+	}
+
+
+	void RotateRL(Node* parent)
+	{
+		Node* SubR = parent->_right;
+		Node* SubRL = SubR->_left;
+		int bf = SubRL->_bf;
+
+		RotateR(SubR);
+		RotateL(parent);
+		if (bf == 1)
+		{
+			parent->_bf = -1;
+			SubR->_bf = SubRL->_bf = 0;
+		}
+		else if (bf == 1)
+		{
+			SubR->_bf = 1;
+			parent->_bf = SubRL->_bf = 0;
+		}
+		else if (bf == 0)
+			SubRL->_bf = SubR->_bf = parent->_bf = 0;
+		else
+			assert(false);
+	}
+
+};
